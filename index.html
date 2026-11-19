@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14213d">
+<title>사출조건 최적화</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="사출조건">
+<meta name="application-name" content="사출조건">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4f7; --card:#fff; --ink:#14213d; --sub:#5b6478; --line:#e3e7ee;
+  --navy:#14213d; --acc:#f77f00; --acc2:#fcbf49;
+  --ok:#2a9d8f; --warn:#e9a23b; --bad:#d62828; --blue:#3a6ea5; --violet:#7b5ea7;
+  --m1:#3a6ea5; --m2:#2a9d8f; --m3:#7b5ea7;
+  --f1:#f77f00; --f2:#e76f51; --f3:#d62828; --f4:#9d0208; --fh:#6c757d;
+  --r:14px; --safeb:env(safe-area-inset-bottom,0px); --safet:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',system-ui,sans-serif;font-size:15px;line-height:1.45}
+.num{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+header{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:calc(10px + var(--safet)) 16px 10px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+header .logo{width:34px;height:34px;border-radius:9px;background:var(--acc);display:grid;place-items:center;flex:none}
+header h1{font-size:17px;margin:0;font-weight:900;letter-spacing:-.3px}
+header .pn{font-size:12px;opacity:.75;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .st{margin-left:auto;font-size:11px;padding:4px 9px;border-radius:99px;font-weight:700;white-space:nowrap}
+main{padding:12px 12px calc(84px + var(--safeb));max-width:720px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+.card{background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(20,33,61,.06)}
+.card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px;font-weight:700}
+.card h2 .tag{font-size:11px;font-weight:500;color:var(--sub);margin-left:auto}
+.card h3{font-size:13px;margin:14px 0 6px;color:var(--sub);font-weight:700}
+.bar{width:4px;height:16px;border-radius:2px;background:var(--acc);flex:none}
+.hint{font-size:12px;color:var(--sub)}
+/* inputs */
+.grp{font-size:12px;font-weight:700;color:var(--acc);margin:12px 0 6px;letter-spacing:.3px}
+.grp:first-child{margin-top:0}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.f{background:#fff8e6;border:1.5px solid #f6dfa3;border-radius:10px;padding:6px 10px}
+.f label{display:block;font-size:11px;color:var(--sub)}
+.f .row{display:flex;align-items:baseline;gap:4px}
+.f input,.f select{width:100%;border:0;background:transparent;font:700 18px 'JetBrains Mono',monospace;color:#1d4ed8;padding:2px 0;outline:none;min-width:0}
+.f select{font-family:'Noto Sans KR';font-size:16px;-webkit-appearance:none;appearance:none}
+.f .u{font-size:11px;color:var(--sub);white-space:nowrap}
+.f.auto{background:#f4f6f9;border-color:var(--line)}
+.f.auto .v{font:700 17px 'JetBrains Mono',monospace;color:var(--ink)}
+.f.wide{grid-column:1/-1}
+.f .fh{display:flex;align-items:center;gap:4px}
+.f .fh label{flex:1;min-width:0}
+.ut{display:inline-flex;background:#f6dfa3;border-radius:7px;padding:2px;flex:none}
+.ut button{border:0;background:transparent;font:700 12px 'Noto Sans KR';padding:3px 9px;border-radius:5px;color:#9a6205;min-width:30px}
+.ut button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.f .cv{font:500 11px 'JetBrains Mono',monospace;color:var(--sub);margin-top:1px}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--bg);border-radius:10px;padding:8px 10px}
+.kpi .l{font-size:11px;color:var(--sub)}
+.kpi .v{font:700 19px 'JetBrains Mono',monospace}
+.kpi .v small{font-size:11px;font-weight:500;color:var(--sub);margin-left:2px;font-family:'Noto Sans KR'}
+/* table */
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+.t th,.t td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--line)}
+.t th{font-size:11px;color:var(--sub);font-weight:500}
+.t td.h{font-weight:700;text-align:left;white-space:nowrap}
+.t td.n{font-family:'JetBrains Mono',monospace;font-weight:700}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
+.c-ok{background:#e0f3f1;color:#1d6f65}.c-warn{background:#fdf0d9;color:#9a6205}.c-bad{background:#fbe1e1;color:#a11c1c}
+svg text{font-family:'Noto Sans KR',sans-serif}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;color:var(--sub);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.seg{display:flex;background:var(--bg);border-radius:10px;padding:3px;margin-bottom:12px;overflow-x:auto}
+.seg button{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:8px;font:500 13px 'Noto Sans KR';color:var(--sub);white-space:nowrap}
+.seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.btn{border:0;border-radius:10px;padding:10px 14px;font:700 14px 'Noto Sans KR';background:var(--navy);color:#fff}
+.btn.ghost{background:var(--bg);color:var(--ink)}
+.btn.acc{background:var(--acc)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.check{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.check:last-child{border-bottom:0}
+.check .ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;font-weight:900;color:#fff;font-size:14px}
+.check .tt{font-weight:700;font-size:14px}
+.check .dd{font-size:12px;color:var(--sub)}
+.check .vv{margin-left:auto;text-align:right;font:700 14px 'JetBrains Mono',monospace;white-space:nowrap}
+/* nav */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:var(--safeb)}
+nav button{flex:1;border:0;background:none;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font:500 11px 'Noto Sans KR';color:#8a93a6}
+nav button svg{width:23px;height:23px}
+nav button.on{color:var(--acc);font-weight:700}
+/* list rows */
+.lrow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line)}
+.lrow:last-child{border-bottom:0}
+.lrow .main{flex:1;min-width:0}
+.lrow .t1{font-weight:700}
+.lrow .t2{font-size:12px;color:var(--sub)}
+.lrow .ed{border:0;background:var(--bg);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--ink)}
+/* defects */
+.dchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px}
+.dchips button{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:6px 12px;font:500 13px 'Noto Sans KR';color:var(--ink)}
+.dchips button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.dcard{background:#fff;border-radius:var(--r);margin-bottom:10px;overflow:hidden;box-shadow:0 1px 2px rgba(20,33,61,.06)}
+.dhead{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+.dicon{width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--bg)}
+.dhead .nm{font-weight:900;font-size:15px}
+.dhead .ds{font-size:12px;color:var(--sub)}
+.dhead .ar{margin-left:auto;transition:transform .2s;color:var(--sub)}
+.dcard.open .ar{transform:rotate(180deg)}
+.dbody{display:none;padding:0 14px 14px}
+.dcard.open .dbody{display:block}
+.cause{font-size:12px;background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.act{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+.act:last-child{border-bottom:0}
+.act .dir{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:900;flex:none;font-size:16px}
+.dir.up{background:#fde8d7;color:#c25400}.dir.dn{background:#dbe8f5;color:#24548a}.dir.ck{background:#e5e7eb;color:#374151}
+.act .p{font-weight:700;font-size:13px}
+.act .n{font-size:12px;color:var(--sub)}
+.act .cur{margin-left:auto;text-align:right;font-size:11px;color:var(--sub);white-space:nowrap}
+.act .cur b{display:block;font:700 13px 'JetBrains Mono',monospace;color:var(--ink)}
+.prio{font-size:10px;font-weight:700;color:#fff;background:var(--acc);border-radius:4px;padding:1px 5px;margin-right:4px;vertical-align:1px}
+/* modal */
+.mask{position:fixed;inset:0;background:rgba(10,15,30,.45);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.mask.on{display:flex}
+.sheet{background:#fff;width:100%;max-width:720px;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + var(--safeb));max-height:88vh;overflow:auto}
+.sheet h3{margin:0 0 12px;font-size:16px}
+.toast{position:fixed;left:50%;bottom:calc(90px + var(--safeb));transform:translateX(-50%);background:var(--navy);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.guide li{margin-bottom:6px;font-size:13px}
+.guide b{color:var(--navy)}
+.steps{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:13px;align-items:center}
+.steps .s{font:700 12px 'Noto Sans KR';color:#fff;border-radius:6px;padding:3px 7px;text-align:center}
+#instBar{position:fixed;left:12px;right:12px;bottom:calc(76px + var(--safeb));z-index:40;background:var(--navy);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:696px;margin:0 auto}
+#instBar.on{display:flex}
+#instBar img{width:38px;height:38px;border-radius:9px;flex:none}
+#instBar .t{font-size:13px;line-height:1.3}#instBar .t b{display:block;font-size:14px}
+#instBar button{border:0;border-radius:9px;font:700 13px 'Noto Sans KR',sans-serif;padding:8px 12px}
+#instGo{margin-left:auto;background:var(--acc);color:#fff}#instX{background:transparent;color:#fff;opacity:.7;padding:8px 6px!important}
+</style>
+</head>
+<body>
+<div id="instBar"><img src="icon-192.png" alt=""><div class="t"><b>홈 화면에 앱 설치</b>아이콘으로 바로 실행 · 오프라인 사용</div><button id="instGo">설치</button><button id="instX" aria-label="닫기">✕</button></div>
+<header>
+  <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M3 9h11v6H3z"/><path d="M14 10.5h4l3-2v7l-3-2h-4"/><path d="M6 9V6M10 9V6"/></svg></div>
+  <div style="min-width:0"><h1>사출조건 최적화</h1><div class="pn" id="hdrName"></div></div>
+  <span class="st" id="hdrSt"></span>
+</header>
+
+<main>
+<!-- ============ 계산 ============ -->
+<section class="view on" id="v-calc">
+  <div class="card">
+    <h2><span class="bar"></span>입력 조건<span class="tag">노란 칸만 입력</span></h2>
+    <div class="grp">제품</div>
+    <div class="fgrid">
+      <div class="f wide"><label>품명</label><div class="row"><input id="i-name" type="text" style="font-family:'Noto Sans KR';font-size:16px"></div></div>
+    </div>
+    <div class="grp">사출기 사양</div>
+    <div class="fgrid">
+      <div class="f"><label>사출기 Ton수</label><div class="row"><select id="i-ton"></select><span class="u">Ton ▾</span></div></div>
+      <div class="f auto"><label>스크류직경</label><div class="row"><span class="v" id="a-d"></span><span class="u">mm</span></div></div>
+      <div class="f auto"><label>사출율</label><div class="row"><span class="v" id="a-rate"></span><span class="u">㎤/s</span></div></div>
+      <div class="f auto"><label>최대압력</label><div class="row"><span class="v" id="a-pmax"></span><span class="u">kgf/㎠</span></div></div>
+      <div class="f auto"><label>계량스트로크(최대)</label><div class="row"><span class="v" id="a-stroke"></span><span class="u">mm</span></div></div>
+      <div class="f auto"><label>L/D · 단면적</label><div class="row"><span class="v" id="a-ld"></span></div></div>
+    </div>
+    <div class="grp">제품 사양</div>
+    <div class="fgrid">
+      <div class="f"><label>재질</label><div class="row"><select id="i-mat"></select><span class="u">▾</span></div></div>
+      <div class="f auto"><label>비중(용융) · 열량</label><div class="row"><span class="v" id="a-rho"></span></div></div>
+      <div class="f"><div class="fh"><label id="l-part">제품중량 (1개)</label><span class="ut" data-k="part"><button type="button" data-v="g">g</button><button type="button" data-v="cc">㎤</button></span></div><div class="row"><input id="i-part" inputmode="decimal"><span class="u" id="u-part">g</span></div><div class="cv" id="cv-part"></div></div>
+      <div class="f"><div class="fh"><label id="l-runner">런너중량</label><span class="ut" data-k="runner"><button type="button" data-v="g">g</button><button type="button" data-v="cc">㎤</button></span></div><div class="row"><input id="i-runner" inputmode="decimal"><span class="u" id="u-runner">g</span></div><div class="cv" id="cv-runner"></div></div>
+      <div class="f"><label>Cavity 수</label><div class="row"><input id="i-cav" inputmode="numeric"><span class="u">ea</span></div></div>
+      <div class="f auto"><label>Shot 중량</label><div class="row"><span class="v" id="a-shot"></span><span class="u">g</span></div></div>
+    </div>
+    <div class="hint" style="margin-top:6px">g / ㎤ 버튼으로 중량 또는 체적(CAD 값)을 선택해 입력하세요. 체적은 재질의 <b>고체 비중</b>으로 중량 환산됩니다.</div>
+    <div class="grp">금형 냉각</div>
+    <div class="fgrid">
+      <div class="f"><label>냉각 in 온도</label><div class="row"><input id="i-tin" inputmode="decimal"><span class="u">℃</span></div></div>
+      <div class="f"><label>냉각 out 온도</label><div class="row"><input id="i-tout" inputmode="decimal"><span class="u">℃</span></div></div>
+      <div class="f"><label>냉각 유동량</label><div class="row"><input id="i-flow" inputmode="decimal"><span class="u">ℓ/min</span></div></div>
+    </div>
+    <div class="grp">설정 기준값 (3차)</div>
+    <div class="fgrid">
+      <div class="f"><label>속도 기준</label><div class="row"><input id="i-spd" inputmode="decimal"><span class="u">%</span></div></div>
+      <div class="f"><label>압력 기준</label><div class="row"><input id="i-prs" inputmode="decimal"><span class="u">kgf/㎠</span></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="bar"></span>핵심 결과</h2>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="bar"></span>스크류 위치 맵<span class="tag">0 = 노즐측</span></h2>
+    <div id="mapZoom"></div>
+    <div class="legend">
+      <span><i style="background:var(--m1)"></i>계량 1차(저속)</span><span><i style="background:var(--m2)"></i>2차(중속)</span><span><i style="background:var(--m3)"></i>3차(저속2)</span>
+      <span><i style="background:var(--f1)"></i>충진 1단 런너</span><span><i style="background:var(--f2)"></i>2단 Gate</span><span><i style="background:var(--f3)"></i>3단 90%</span><span><i style="background:var(--f4)"></i>4단 98%</span><span><i style="background:#adb5bd"></i>쿠션</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="bar"></span>충진 프로파일<span class="tag">위치 기준</span></h2>
+    <div id="profile"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="bar"></span>성형조건 초기 설정값</h2>
+    <div class="scroll" id="condTbl"></div>
+    <div class="btns" style="margin-top:12px"><button class="btn acc" id="copyBtn">조건표 복사</button></div>
+  </div>
+</section>
+
+<!-- ============ 점검 ============ -->
+<section class="view" id="v-check">
+  <div class="card">
+    <h2><span class="bar"></span>계량 거리 점검<span class="tag">설정요령 1항</span></h2>
+    <div id="gauge"></div>
+    <div id="strokeMap"></div>
+    <div class="legend"><span><i style="background:#cfeee9"></i>권장 범위</span><span><i style="background:#fdf0d9"></i>허용 범위</span><span><i style="background:#fbe1e1"></i>벗어남</span><span><i style="background:var(--navy)"></i>현재 계량거리</span></div>
+  </div>
+  <div class="card">
+    <h2><span class="bar"></span>점검 항목</h2>
+    <div id="checks"></div>
+  </div>
+  <div class="card">
+    <h2><span class="bar"></span>충진율별 계량거리<span class="tag">단계 충진 시험용</span></h2>
+    <div id="fillTest"></div>
+    <div class="hint" style="margin-top:6px">※ 계량거리는 쿠션을 제외한 값입니다. 시험 시 100% → 70% 순으로 미성형 상태를 확인하세요.</div>
+  </div>
+</section>
+
+<!-- ============ 환산 ============ -->
+<section class="view" id="v-conv">
+  <div class="card">
+    <h2><span class="bar"></span>계량거리 → 체적·중량</h2>
+    <div class="hint" style="margin-bottom:8px">중량(g) = R² × π × L × 용융비중</div>
+    <div class="fgrid">
+      <div class="f"><label>계량거리 L</label><div class="row"><input id="c-L" inputmode="decimal"><span class="u">mm</span></div></div>
+      <div class="f auto"><label>체적</label><div class="row"><span class="v" id="c-vol"></span><span class="u">㎤</span></div></div>
+      <div class="f auto wide"><label>중량</label><div class="row"><span class="v" id="c-wt"></span><span class="u">g</span><span class="u" id="c-wtp" style="margin-left:auto"></span></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2><span class="bar"></span>압력 · 속도 환산</h2>
+    <div class="fgrid">
+      <div class="f"><label>압력 설정값</label><div class="row"><input id="c-ps" inputmode="decimal"><span class="u">눈금</span></div></div>
+      <div class="f"><label>압력 설정 최대 눈금</label><div class="row"><input id="c-pm" inputmode="decimal"></div></div>
+      <div class="f auto wide"><label>실제 사출압력 (최대 <span id="c-pmaxl"></span>)</label><div class="row"><span class="v" id="c-pa"></span><span class="u">kgf/㎠</span></div></div>
+      <div class="f"><label>속도 설정값 (0~1)</label><div class="row"><input id="c-vs" inputmode="decimal"></div></div>
+      <div class="f auto"><label>최대 사출속도</label><div class="row"><span class="v" id="c-vmax"></span><span class="u">mm/s</span></div></div>
+      <div class="f auto wide"><label>실제 사출속도</label><div class="row"><span class="v" id="c-va"></span><span class="u">mm/s</span></div></div>
+    </div>
+    <div id="pvBars" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h2><span class="bar"></span>스크류 변경 시 속도 환산<span class="tag">사출량 유지</span></h2>
+    <div class="fgrid">
+      <div class="f"><label>기존 스크류경</label><div class="row"><input id="s-d0" inputmode="decimal"><span class="u">mm</span></div></div>
+      <div class="f"><label>변경 스크류경</label><div class="row"><input id="s-d1" inputmode="decimal"><span class="u">mm</span></div></div>
+    </div>
+    <div class="hint" style="margin:8px 0">변경 후 속도 = 기존 속도 × 기존 단면적 ÷ 변경 단면적 <b id="s-ratio" class="num"></b></div>
+    <div class="scroll" id="screwTbl"></div>
+    <div id="screwChart"></div>
+  </div>
+</section>
+
+<!-- ============ 불량 ============ -->
+<section class="view" id="v-defect">
+  <div class="card" style="padding:12px 14px">
+    <div style="font-weight:700;margin-bottom:4px">불량 발생 시 처리 방안</div>
+    <div class="hint">불량을 누르면 원인과 조치 순서가 나옵니다. 오른쪽 숫자는 현재 계산된 설정값입니다. 한 번에 한 항목씩 바꾸고 결과를 확인하세요.</div>
+  </div>
+  <div class="dchips" id="dfilter"></div>
+  <div id="dlist"></div>
+  <div class="hint" style="padding:0 4px">※ 일반적인 사출 불량 대책입니다. 수지 grade·금형 구조에 따라 우선순위가 달라질 수 있습니다.</div>
+</section>
+
+<!-- ============ 자료 ============ -->
+<section class="view" id="v-data">
+  <div class="seg" id="dseg">
+    <button data-s="mach" class="on">사출기</button><button data-s="mat">원재료</button><button data-s="coef">설정계수</button><button data-s="res">체류시간</button><button data-s="guide">설정요령</button>
+  </div>
+  <div id="d-mach" class="dsub"></div>
+  <div id="d-mat" class="dsub" hidden></div>
+  <div id="d-coef" class="dsub" hidden></div>
+  <div id="d-res" class="dsub" hidden></div>
+  <div id="d-guide" class="dsub" hidden></div>
+</section>
+</main>
+
+<nav id="nav">
+  <button data-v="calc" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/></svg>조건계산</button>
+  <button data-v="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 14a8 8 0 0 1 16 0"/><path d="M12 14l4-4"/><path d="M4 18h16"/></svg>점검</button>
+  <button data-v="conv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>환산</button>
+  <button data-v="defect"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>불량대책</button>
+  <button data-v="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>자료</button>
+</nav>
+
+<div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== 기본 데이터 (엑셀 원본) ===================== */
+const DEF = {
+  inp:{name:'D2 Protect Cap',ton:170,mat:'LDPE',runner:14.6,part:9.2,partU:'g',runnerU:'g',cav:4,tin:65,tout:70,flow:20,spd:50,prs:70},
+  machines:[{ton:80,d:36,rate:91,pmax:1842,stroke:120},{ton:120,d:40,rate:106,pmax:1991,stroke:160},{ton:170,d:45,rate:134,pmax:1919,stroke:220}],
+  mats:[['ABS',1.03,.88,85],['POM',1.42,1.16,100],['POM GF10%',1.47,1.23,100],['POM GF20%',1.52,1.31,100],['POM GF30%',1.56,1.38,100],['PA66',1.15,.96,180],['PA66 GF30%',1.39,1.24,180],['PP',.93,.78,150],['PPS',1.61,1.41,null],['PEEK',1.3,1.1,null],['PMMA',1.19,1.06,68.3],['LDPE',.95,.73,70],['HDPE',.96,.73,70],['PBT',1.23,1.04,null],['PC',1.21,1.05,null],['PS',1.05,.95,75],['PVC',1.2,1.06,50],['LCP',1.69,1.51,null],['PET',1.41,1.17,null],['PET GF30',1.68,1.4,150],['TPU',1.3,1.15,null],['TPE',.88,.76,null]].map(a=>({name:a[0],solid:a[1],melt:a[2],heat:a[3]})),
+  coef:{m1:.2,m2:.8,m3:.95,cush:.15,suck:.1,f1:1,f2:.1,f3:.9,f4:.98,v1:.9,v2:.8,v4:.7,vh:.6,p1:.9,p2:.8,p4:.7,ph:.8,cool:5,rLo:.3,rHi:.7,aLo:.2,aHi:.8},
+  conv:{L:92,ps:140,pm:140,vs:.6,d0:45,d1:36,sp:[28,23,17,11,8,5]},
+  res:[
+    ['80-4',80,36,120,'Tesla Model S PT7','D100P',4,3.53,9.68,30,9,19.8],
+    ['80-5',80,36,120,'JM','D100P',4,4.45,8.02,33,7.7,26.7],
+    ['80-7',80,36,120,'MB,EA-M','H100',3,4.98,9.02,28,6.6,28],
+    ['80-8',80,32,90,'PMSX3Y','D100P',4,5.54,14.76,70.6,13.6,26.9],
+    ['80-10',80,36,120,'C1UL','D100P',4,4.66,8.23,40,14.2,30.7],
+    ['80-11',80,36,120,'FORD S650 PT14','D100P',4,3.74,14.35,38,12.3,25.6],
+    ['80-12',80,36,120,'FORD TRANSIT V36X','D100P',4,5.75,8.61,38,10.7,37.8],
+    ['80-13',80,36,120,'FAAR WE ITR','D100P',4,3.83,6.12,33,13,33.1],
+    ['170-1',170,45,220,'FORD TRANSIT','D100P',4,5.95,13.71,38,15.9,27.3],
+    ['170-2',170,45,220,'BEV3 B.Seat','F10-03H',4,5.42,12.79,26,8,21.8],
+    ['170-3',170,45,220,'D2UX2','D100P',4,5.45,9.98,33,14,29.5],
+    ['170-4',170,45,220,'GBB0317 B.Sest','H100',8,5.44,5.64,33,5.4,33.9],
+    ['170-5',170,45,220,'DN8 Bearing','H100',8,6.25,0,33,5,30],
+    ['170-6',170,45,220,'EN/TQ','PA66',4,11.85,10.32,42,3.9,26.4],
+    ['170-6',170,45,220,'EX T/R','PA66',4,5.79,13.56,35,8,30]
+  ].map(a=>({m:a[0],ton:a[1],d:a[2],stroke:a[3],prod:a[4],mat:a[5],cav:a[6],net:a[7],run:a[8],meter:a[9],remain:a[10],ct:a[11]}))
+};
+const COEF_META=[
+ ['계량','m1','1차 위치 비율 (계량완료 대비)','배','계량완료 × 0.2'],
+ ['계량','m2','2차 위치 비율 (계량완료 대비)','배','계량완료 × 0.8 (설정요령 95%와 다름, 필요시 0.95)'],
+ ['계량','m3','3차 위치: 계량완료 앞 거리','mm','계량완료 − 0.95'],
+ ['계량','cush','쿠션량 비율 (스크류경 대비)','배','적정 0.10~0.20'],
+ ['계량','suck','흘림방지(석백) 비율','배','스크류경 × 0.1 (설정요령 6항)'],
+ ['충진','f1','1차 위치: 런너 반영 비율','배','런너 전체 반영'],
+ ['충진','f2','2차 위치: 제품 체적 대비 (Gate부)','배','제품 × 0.1'],
+ ['충진','f3','3차 위치: 제품 충진율','배','제품 × 0.9'],
+ ['충진','f4','4차 위치: 충진율 (V/P 절환)','배','제품 × 0.98'],
+ ['속도','v1','1차 비율 (3차 대비)','배',''],['속도','v2','2차 비율','배',''],['속도','v4','4차 비율','배',''],['속도','vh','보압 비율','배',''],
+ ['압력','p1','1차 비율 (3차 대비)','배',''],['압력','p2','2차 비율','배',''],['압력','p4','4차 비율','배',''],['압력','ph','보압 비율','배',''],
+ ['냉각','cool','냉각시간 계수','배','열량×Shot(kg)×3600/(유량×ΔT×60)×계수'],
+ ['점검','rLo','계량거리 권장 하한','비율','30% 미만 과열 우려'],['점검','rHi','계량거리 권장 상한','비율','70% 초과 용융 불충분'],
+ ['점검','aLo','계량거리 허용 하한','비율','최대 계량거리의 20%'],['점검','aHi','계량거리 허용 상한','비율','최대 계량거리의 80%']
+];
+
+/* ===================== 상태 저장 ===================== */
+const KEY='injopt_v2';
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.inp)S=JSON.parse(JSON.stringify(DEF));
+for(const k in DEF) if(S[k]==null) S[k]=JSON.parse(JSON.stringify(DEF[k]));
+for(const k in DEF.coef) if(S.coef[k]==null) S.coef[k]=DEF.coef[k];
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+/* ===================== 유틸 ===================== */
+const $=id=>document.getElementById(id);
+const isN=v=>typeof v==='number'&&isFinite(v);
+const f=(v,d=1)=>isN(v)?v.toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d}):'-';
+const pct=v=>isN(v)?Math.round(v*100)+'%':'-';
+const num=v=>{const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1600)}
+const area=d=>Math.PI*Math.pow(d/20,2);
+
+/* ===================== 계산 엔진 (엑셀 수식 동일) ===================== */
+function calc(){
+  const I=S.inp,c=S.coef,R={};
+  const m=S.machines.find(x=>x.ton==I.ton)||{};
+  const mt=S.mats.find(x=>x.name===I.mat)||{};
+  R.m=m;R.mt=mt;
+  R.d=num(m.d);R.rate=num(m.rate);R.pmax=num(m.pmax);R.stroke=num(m.stroke);
+  R.ld=R.d&&R.stroke?R.stroke/R.d:null;
+  R.A=R.d?area(R.d):null;
+  R.rho=num(mt.melt);R.heat=num(mt.heat);R.solid=num(mt.solid);
+  const toW=(v,u)=>u==='cc'?(R.solid?v*R.solid:null):v;      // 체적(㎤)→중량(g): 고체비중
+  R.partW=toW(I.part,I.partU);R.runW=toW(I.runner,I.runnerU);
+  R.shot=isN(R.partW)&&isN(R.runW)?R.partW*I.cav+R.runW:null;
+  const L=w=>(isN(w)&&R.A&&R.rho)?w/R.rho/R.A*10:null;           // 중량→스크류 거리(mm)
+  R.cush=R.d?R.d*c.cush:null;
+  R.meterLen=L(R.shot);                                      // 쿠션 제외 계량거리
+  R.mEnd=isN(R.meterLen)&&isN(R.cush)?R.meterLen+R.cush:null;// 계량완료
+  R.m1=R.mEnd*c.m1;R.m2=R.mEnd*c.m2;R.m3=isN(R.mEnd)?R.mEnd-c.m3:null;
+  R.suck=R.d?R.d*c.suck:null;
+  R.runLen=L(R.runW);
+  const prodLen=isN(R.partW)?L(R.partW*I.cav):null;
+  R.f1=isN(R.mEnd)?R.mEnd-R.runLen*c.f1:null;
+  R.f2=isN(R.f1)?R.f1-prodLen*c.f2:null;
+  R.f3=isN(R.f1)?R.f1-prodLen*c.f3:null;
+  R.f4=isN(R.f1)?R.f1-prodLen*c.f4:null;
+  R.v=[I.spd*c.v1,I.spd*c.v2,I.spd,I.spd*c.v4,I.spd*c.vh];
+  R.p=[I.prs*c.p1,I.prs*c.p2,I.prs,I.prs*c.p4,I.prs*c.ph];
+  R.coolMsg=null;
+  if(!isN(R.heat)){R.cool=null;R.coolMsg='열량 입력 필요'}
+  else if(I.tout<=I.tin||I.flow<=0){R.cool=null;R.coolMsg='온도·유량 확인'}
+  else R.cool=R.heat*(R.shot/1000)*(3600/((I.flow*(I.tout-I.tin))*60))*c.cool;
+  R.ratio=isN(R.meterLen)&&R.stroke?R.meterLen/R.stroke:null;
+  // 계량비 판정 (K17)
+  R.rCls=judgeRatio(R.ratio);
+  R.cushOK=isN(R.cush)&&isN(R.runLen)?R.cush<=R.runLen:null;
+  // 상태 (C29)
+  if(!isN(R.d))R.status=['사출기 사양 확인','bad'];
+  else if(!isN(R.rho))R.status=['재질 비중 확인','bad'];
+  else if(!isN(R.shot))R.status=['고체 비중 확인','bad'];
+  else if(!isN(R.heat))R.status=['열량 미등록','warn'];
+  else if(I.tout<=I.tin)R.status=['냉각수 온도 확인','warn'];
+  else R.status=['입력 정상','ok'];
+  return R;
+}
+function judgeRatio(r){
+  const c=S.coef;
+  if(!isN(r))return['-','warn'];
+  if(r<c.aLo)return[pct(c.aLo)+' 미만 · 과열 우려','bad'];
+  if(r>c.aHi)return[pct(c.aHi)+' 초과 · 용융 불충분','bad'];
+  if(r<c.rLo)return['권장('+pct(c.rLo)+') 미달 · 과열 주의','warn'];
+  if(r>c.rHi)return['권장('+pct(c.rHi)+') 초과 · 용융 주의','warn'];
+  return['적정','ok'];
+}
+let R;
+
+/* ===================== 입력 바인딩 ===================== */
+function fillSelects(){
+  $('i-ton').innerHTML=S.machines.map(m=>`<option value="${m.ton}">${m.ton}</option>`).join('');
+  $('i-mat').innerHTML=S.mats.map(m=>`<option>${esc(m.name)}</option>`).join('');
+  $('i-ton').value=S.inp.ton;$('i-mat').value=S.inp.mat;
+}
+function bindInputs(){
+  const map={'i-name':'name','i-part':'part','i-runner':'runner','i-cav':'cav','i-tin':'tin','i-tout':'tout','i-flow':'flow','i-spd':'spd','i-prs':'prs'};
+  for(const id in map){const el=$(id),k=map[id];el.value=S.inp[k];
+    el.addEventListener('input',()=>{if(k==='name')S.inp.name=el.value;else{const n=num(el.value);S.inp[k]=n??0}update()});}
+  $('i-ton').onchange=e=>{S.inp.ton=+e.target.value;update()};
+  $('i-mat').onchange=e=>{S.inp.mat=e.target.value;update()};
+  document.querySelectorAll('.ut button').forEach(b=>b.onclick=()=>{
+    const k=b.parentElement.dataset.k,ku=k+'U',nu=b.dataset.v;
+    if((S.inp[ku]||'g')===nu)return;
+    const sd=num((S.mats.find(x=>x.name===S.inp.mat)||{}).solid);
+    if(!sd){toast('재질의 고체 비중을 먼저 등록하세요');return}
+    const v=nu==='cc'?S.inp[k]/sd:S.inp[k]*sd;
+    S.inp[k]=Math.round(v*1000)/1000;S.inp[ku]=nu;$('i-'+k).value=S.inp[k];
+    update();toast(nu==='cc'?'체적(㎤) 입력으로 전환':'중량(g) 입력으로 전환')});
+  const cmap={'c-L':'L','c-ps':'ps','c-pm':'pm','c-vs':'vs','s-d0':'d0','s-d1':'d1'};
+  for(const id in cmap){const el=$(id),k=cmap[id];el.value=S.conv[k];el.addEventListener('input',()=>{S.conv[k]=num(el.value)??0;update()})}
+}
+
+/* ===================== 렌더: 계산 탭 ===================== */
+function renderCalc(){
+  $('hdrName').textContent=S.inp.name||'';
+  const st=$('hdrSt');st.textContent=R.status[0];st.className='st c-'+R.status[1];
+  $('a-d').textContent=f(R.d,0);$('a-rate').textContent=f(R.rate,0);$('a-pmax').textContent=f(R.pmax,0);
+  $('a-stroke').textContent=f(R.stroke,0);
+  $('a-ld').innerHTML=`${f(R.ld,2)}<span class="u" style="font-family:'Noto Sans KR'"> · ${f(R.A,2)}㎠</span>`;
+  $('a-rho').innerHTML=`${f(R.rho,2)}<span class="u"> g/㎤ · </span>${isN(R.heat)?f(R.heat,0):'<span style="color:var(--bad)">미등록</span>'}<span class="u"> kcal</span>`;
+  $('a-shot').textContent=f(R.shot,1);
+  [['part','제품'],['runner','런너']].forEach(([k,nm])=>{
+    const cc=S.inp[k+'U']==='cc',w=k==='part'?R.partW:R.runW;
+    document.querySelectorAll(`.ut[data-k="${k}"] button`).forEach(b=>b.classList.toggle('on',b.dataset.v===(cc?'cc':'g')));
+    $('l-'+k).textContent=nm+(cc?'체적':'중량')+(k==='part'?' (1개)':'');
+    $('u-'+k).textContent=cc?'㎤':'g';
+    $('cv-'+k).textContent=cc?(isN(w)?`= ${f(w,2)} g (비중 ${f(R.solid,2)})`:'고체 비중 없음'):(R.solid?`≈ ${f(w/R.solid,2)} ㎤`:'');
+  });
+  const k=(l,v,u,cls)=>`<div class="kpi"><div class="l">${l}</div><div class="v" ${cls?`style="color:${cls}"`:''}>${v}<small>${u}</small></div></div>`;
+  $('kpis').innerHTML=
+    k('계량완료',f(R.mEnd),'mm')+k('V/P 절환(4차)',f(R.f4),'mm')+k('쿠션량',f(R.cush,2),'mm')+
+    k('냉각시간',isN(R.cool)?f(R.cool):`<span style="font-size:13px">${R.coolMsg}</span>`,isN(R.cool)?'sec':'')+
+    k('계량비',pct(R.ratio),'',{ok:'var(--ok)',warn:'var(--warn)',bad:'var(--bad)'}[R.rCls[1]])+
+    k('Shot 중량',f(R.shot),'g');
+  $('mapZoom').innerHTML=svgMap();
+  $('profile').innerHTML=svgProfile();
+  $('condTbl').innerHTML=condTable();
+}
+function condTable(){
+  const n=(v,d=1)=>`<td class="n">${f(v,d)}</td>`;
+  return `<table class="t">
+  <tr><th></th><th>1차</th><th>2차</th><th>3차</th><th>계량완료</th><th>흘림방지</th><th></th></tr>
+  <tr><td class="h">계량 위치</td>${n(R.m1)}${n(R.m2)}${n(R.m3)}${n(R.mEnd)}${n(R.suck)}<td>mm</td></tr>
+  <tr><th></th><th>1차</th><th>2차</th><th>3차</th><th>4차</th><th>보압</th><th></th></tr>
+  <tr><td class="h">충진 위치</td>${n(R.f1)}${n(R.f2)}${n(R.f3)}${n(R.f4)}<td>X</td><td>mm</td></tr>
+  <tr><td class="h">속도</td>${R.v.map(v=>n(v,0)).join('')}<td>%</td></tr>
+  <tr><td class="h">압력</td>${R.p.map(v=>n(v,0)).join('')}<td style="font-size:10px">kgf/㎠</td></tr>
+  <tr><td class="h">쿠션량</td>${n(R.cush,2)}<td colspan="4"></td><td>mm</td></tr>
+  <tr><td class="h">냉각시간</td>${isN(R.cool)?n(R.cool):`<td style="color:var(--bad);font-size:12px">${R.coolMsg}</td>`}<td colspan="4"></td><td>sec</td></tr>
+  </table>`;
+}
+/* 스크류 위치 맵 (확대) */
+function svgMap(){
+  if(!isN(R.mEnd))return '<div class="hint">사출기·재질을 확인하세요.</div>';
+  const W=360,x0=14,x1=346,max=R.mEnd*1.08,X=v=>x0+(v/max)*(x1-x0);
+  let s=`<svg viewBox="0 0 ${W} 196" width="100%">`;
+  // axis
+  s+=`<line x1="${x0}" y1="170" x2="${x1}" y2="170" stroke="#c5ccd8"/>`;
+  const step=max>150?50:max>60?20:10;
+  for(let t=0;t<=max;t+=step)s+=`<line x1="${X(t)}" y1="167" x2="${X(t)}" y2="173" stroke="#9aa3b5"/><text x="${X(t)}" y="186" font-size="9" fill="#8a93a6" text-anchor="middle">${t}</text>`;
+  s+=`<text x="${x0}" y="12" font-size="10" fill="#5b6478">◀ 노즐(전진)</text><text x="${x1}" y="12" font-size="10" fill="#5b6478" text-anchor="end">후퇴 ▶ mm</text>`;
+  // 계량 lane
+  s+=`<text x="${x0}" y="32" font-size="11" font-weight="700" fill="#14213d">계량</text>`;
+  const mseg=[[0,R.m1,'var(--m1)','1차'],[R.m1,R.m2,'var(--m2)','2차'],[R.m2,R.mEnd,'var(--m3)','3차']];
+  // NB 3차 is short: from m3 (mEnd-0.95) but segments drawn per positions m1,m2,mEnd
+  mseg.forEach(([a,b,col,l])=>{s+=`<rect x="${X(a)}" y="38" width="${Math.max(1,X(b)-X(a))}" height="20" fill="${col}" rx="3"/>`;
+    if(X(b)-X(a)>24)s+=`<text x="${(X(a)+X(b))/2}" y="52" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">${l}</text>`});
+  s+=`<rect x="${x0}" y="38" width="${X(R.cush)-x0}" height="20" fill="#adb5bd" opacity=".55"/>`;
+  [[R.m1,'1차'],[R.m2,'2차'],[R.m3,'3차'],[R.mEnd,'완료']].forEach(([v,l],i)=>{s+=`<line x1="${X(v)}" y1="36" x2="${X(v)}" y2="62" stroke="#14213d" stroke-width="1"/>`});
+  s+=`<text x="${X(R.mEnd)}" y="74" font-size="10" fill="#14213d" text-anchor="end" font-weight="700">완료 ${f(R.mEnd)}</text>`;
+  s+=`<text x="${X(R.m2)}" y="74" font-size="9" fill="#5b6478" text-anchor="end">${f(R.m2)}</text>`;
+  s+=`<text x="${X(R.m1)}" y="74" font-size="9" fill="#5b6478" text-anchor="middle">${f(R.m1)}</text>`;
+  // 충진 lane
+  s+=`<text x="${x0}" y="96" font-size="11" font-weight="700" fill="#14213d">충진</text>`;
+  const fseg=[[R.f1,R.mEnd,'var(--f1)','1단'],[R.f2,R.f1,'var(--f2)','2'],[R.f3,R.f2,'var(--f3)','3단'],[R.f4,R.f3,'var(--f4)','4'],[R.cush,R.f4,'#6c757d','']];
+  fseg.forEach(([a,b,col,l])=>{const w=X(b)-X(a);s+=`<rect x="${X(a)}" y="102" width="${Math.max(1,w)}" height="22" fill="${col}"/>`;
+    if(w>16&&l)s+=`<text x="${(X(a)+X(b))/2}" y="117" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">${l}</text>`});
+  s+=`<rect x="${x0}" y="102" width="${X(R.cush)-x0}" height="22" fill="#adb5bd"/>`;
+  s+=`<text x="${(x0+X(R.cush))/2}" y="117" font-size="9" fill="#fff" text-anchor="middle">쿠션</text>`;
+  // labels
+  const lab=[[R.f1,'1차'],[R.f2,'2차'],[R.f3,'3차'],[R.f4,'V/P']];
+  lab.forEach(([v,l],i)=>{const y=i%2?150:138;s+=`<line x1="${X(v)}" y1="124" x2="${X(v)}" y2="${y-9}" stroke="#14213d" stroke-dasharray="2 2"/><text x="${X(v)}" y="${y}" font-size="9" text-anchor="middle" fill="#14213d"><tspan font-weight="700">${l}</tspan> ${f(v)}</text>`});
+  s+=`<path d="M${X(R.mEnd)} 130 L${X(R.f4)+6} 130" stroke="#f77f00" stroke-width="1.4" marker-end="url(#ah)" fill="none" opacity="0"/>`;
+  s+='</svg>';
+  return s;
+}
+/* 충진 프로파일 (위치 기준 스텝 차트) */
+function svgProfile(){
+  if(!isN(R.mEnd))return '';
+  // 왼→오: 보압 | 4차 | 3차 | 2차 | 1차  (오른쪽 = 사출 시작, 스크류 위치맵과 같은 방향)
+  const W=360,x0=40,hold=46,xa=x0+hold+4,xb=340,T=xb-xa,minW=40;
+  const bnd=[R.f4,R.f3,R.f2,R.f1,R.mEnd];
+  const lens=[0,1,2,3].map(i=>Math.max(0,bnd[i+1]-bnd[i]));
+  // 구간 폭: 길이 비례, 단 최소폭 보장(숫자 겹침 방지)
+  let w=[],fix=[false,false,false,false];
+  for(let it=0;it<5;it++){
+    const nf=fix.filter(x=>!x).length,free=lens.reduce((s,l,i)=>s+(fix[i]?0:l),0),room=T-(4-nf)*minW;
+    w=lens.map((l,i)=>fix[i]?minW:(free>0?l/free*room:room/nf));
+    let ch=false;w.forEach((v,i)=>{if(!fix[i]&&v<minW){fix[i]=true;ch=true}});if(!ch)break}
+  const xs=[xa];w.forEach(v=>xs.push(xs[xs.length-1]+v));
+  const seg=[[x0,x0+hold,4,'#6c757d','보압'],[xs[0],xs[1],3,'var(--f4)','4차'],[xs[1],xs[2],2,'var(--f3)','3차'],[xs[2],xs[3],1,'var(--f2)','2차'],[xs[3],xs[4],0,'var(--f1)','1차']];
+  const vmax=Math.max(100,...R.v),pm=Math.max(...R.p)*1.15||1;
+  const Yv=v=>110-(v/vmax)*80, Yp=v=>220-(v/pm)*80;
+  let s=`<svg viewBox="0 0 ${W} 274" width="100%">`;
+  const block=(Y,vals,base)=>seg.map(([a,b,k,col])=>{const y=Y(vals[k]);
+      return `<rect x="${a}" y="${y}" width="${Math.max(2,b-a-1)}" height="${base-y}" fill="${col}" opacity=".88" rx="2"/>`+
+      `<text x="${(a+b)/2}" y="${y-4}" font-size="10" text-anchor="middle" font-weight="700" fill="#14213d" class="num">${Math.round(vals[k])}</text>`}).join('');
+  s+=`<text x="4" y="22" font-size="11" font-weight="700" fill="#14213d">속도 %</text>`;
+  s+=`<line x1="${x0}" y1="110" x2="${xb}" y2="110" stroke="#c5ccd8"/>`+block(Yv,R.v,110);
+  s+=`<text x="4" y="132" font-size="11" font-weight="700" fill="#14213d">압력 kgf/㎠</text>`;
+  s+=`<line x1="${x0}" y1="220" x2="${xb}" y2="220" stroke="#c5ccd8"/>`+block(Yp,R.p,220);
+  seg.forEach(([a,b,,,n])=>s+=`<text x="${(a+b)/2}" y="236" font-size="10" text-anchor="middle" fill="#5b6478" font-weight="700">${n}</text>`);
+  // 구간 경계 위치값
+  bnd.forEach((p,i)=>{const x=xs[i];
+    s+=`<line x1="${x}" y1="240" x2="${x}" y2="244" stroke="#9aa3b5"/><text x="${x}" y="254" font-size="9" text-anchor="${i===4?'end':'middle'}" fill="#5b6478" class="num">${f(p)}</text>`});
+  s+=`<text x="${x0+hold/2}" y="254" font-size="9" text-anchor="middle" fill="#8a93a6">위치 mm</text>`;
+  s+=`<text x="${xa}" y="270" font-size="9" fill="#8a93a6">◀ 노즐쪽 (스크류 전진)</text><text x="${xb}" y="270" font-size="9" fill="#8a93a6" text-anchor="end">계량완료 ▶</text>`;
+  s+='</svg><div class="hint">오른쪽(1차)에서 사출이 시작되어 왼쪽(보압)으로 진행합니다. 2단(Gate)·4단(V/P 직전)은 저속, 3단은 고속으로 제품 대부분을 충진합니다. ※ 좁은 구간은 읽기 쉽게 넓혀 표시했습니다(폭은 실제 길이 비율과 다를 수 있음).</div>';
+  return s;
+}
+
+/* ===================== 렌더: 점검 탭 ===================== */
+function renderCheck(){
+  const c=S.coef,r=R.ratio;
+  // 반원 게이지
+  const cx=180,cy=120,rad=95,ang=v=>Math.PI*(1-Math.min(1,Math.max(0,v)));
+  const pt=(v,rr)=>[cx+rr*Math.cos(ang(v)),cy-rr*Math.sin(ang(v))];
+  const arc=(a,b,col)=>{const[p1x,p1y]=pt(a,rad),[p2x,p2y]=pt(b,rad);return `<path d="M${p1x} ${p1y} A${rad} ${rad} 0 0 1 ${p2x} ${p2y}" stroke="${col}" stroke-width="22" fill="none"/>`};
+  let g=`<svg viewBox="0 0 360 150" width="100%">`;
+  g+=arc(0,c.aLo,'#fbe1e1')+arc(c.aLo,c.rLo,'#fdf0d9')+arc(c.rLo,c.rHi,'#cfeee9')+arc(c.rHi,c.aHi,'#fdf0d9')+arc(c.aHi,1,'#fbe1e1');
+  [0,c.aLo,c.rLo,c.rHi,c.aHi,1].forEach(v=>{const[x,y]=pt(v,rad+18);g+=`<text x="${x}" y="${y+3}" font-size="10" text-anchor="middle" fill="#5b6478">${pct(v)}</text>`});
+  if(isN(r)){const[x,y]=pt(r,rad-4);g+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#14213d" stroke-width="4" stroke-linecap="round"/>`}
+  g+=`<circle cx="${cx}" cy="${cy}" r="8" fill="#14213d"/>`;
+  g+=`<text x="${cx}" y="${cy-30}" font-size="26" font-weight="900" text-anchor="middle" fill="#14213d" font-family="JetBrains Mono">${pct(r)}</text>`;
+  g+=`<text x="${cx}" y="${cy+26}" font-size="12" text-anchor="middle" font-weight="700" fill="${{ok:'#1d6f65',warn:'#9a6205',bad:'#a11c1c'}[R.rCls[1]]}">${R.rCls[0]}</text></svg>`;
+  $('gauge').innerHTML=g;
+  // 스트로크 바
+  if(R.stroke){const x0=10,x1=350,X=v=>x0+v/R.stroke*(x1-x0);
+    let s=`<svg viewBox="0 0 360 70" width="100%">`;
+    s+=`<rect x="${x0}" y="10" width="${x1-x0}" height="22" fill="#fbe1e1" rx="4"/>`;
+    s+=`<rect x="${X(R.stroke*c.aLo)}" y="10" width="${X(R.stroke*c.aHi)-X(R.stroke*c.aLo)}" height="22" fill="#fdf0d9"/>`;
+    s+=`<rect x="${X(R.stroke*c.rLo)}" y="10" width="${X(R.stroke*c.rHi)-X(R.stroke*c.rLo)}" height="22" fill="#cfeee9"/>`;
+    if(isN(R.meterLen))s+=`<rect x="${x0}" y="16" width="${Math.min(x1,X(R.meterLen))-x0}" height="10" fill="#14213d" rx="3"/>`;
+    [[0],[R.stroke*c.aLo],[R.stroke*c.rLo],[R.stroke*c.rHi],[R.stroke*c.aHi],[R.stroke]].forEach(([v])=>s+=`<text x="${X(v)}" y="46" font-size="9" text-anchor="middle" fill="#5b6478">${f(v,0)}</text>`);
+    s+=`<text x="${x0}" y="64" font-size="10" fill="#14213d">현재 계량거리 <tspan font-weight="700">${f(R.meterLen)} mm</tspan> / 스트로크 ${f(R.stroke,0)} mm</text></svg>`;
+    $('strokeMap').innerHTML=s;}
+  // 점검 리스트
+  const ic={ok:'✓',warn:'!',bad:'✕'},col={ok:'var(--ok)',warn:'var(--warn)',bad:'var(--bad)'};
+  const row=(cls,t,d,v)=>`<div class="check"><div class="ic" style="background:${col[cls]}">${ic[cls]}</div><div><div class="tt">${t}</div><div class="dd">${d}</div></div><div class="vv">${v}</div></div>`;
+  let h='';
+  h+=row(R.rCls[1],'계량 거리 / 계량스트로크',R.rCls[0]+` · 권장 ${f(R.stroke*c.rLo,0)}~${f(R.stroke*c.rHi,0)} mm`,pct(R.ratio));
+  h+=row(R.cushOK==null?'warn':R.cushOK?'ok':'bad','쿠션량 ≤ 런너 길이',`런너 스크류 환산 길이 ${f(R.runLen)} mm`+(R.cushOK===false?' · 쿠션 조정 필요':''),f(R.cush,2)+' mm');
+  const cr=R.d?R.cush/R.d:null;
+  h+=row(cr>=.1&&cr<=.2?'ok':'warn','쿠션량 / 스크류경','적정범위 10~20%',pct(cr));
+  h+=row(isN(R.cool)?'ok':'warn','냉각시간 계산',isN(R.cool)?`ΔT ${f(S.inp.tout-S.inp.tin,1)}℃ · 유량 ${f(S.inp.flow,0)} ℓ/min`:R.coolMsg,isN(R.cool)?f(R.cool)+' s':'-');
+  h+=row(R.status[1],'입력 상태',R.status[1]==='ok'?'모든 값이 등록되어 있습니다':'자료 탭에서 등록하세요',R.status[0]);
+  if(R.ld) h+=row(R.ld>=3.5?'ok':'warn','L/D (스트로크/직경)','',f(R.ld,2));
+  $('checks').innerHTML=h;
+  // 충진율 시험
+  const rows=[1,.9,.8,.7].map(p=>{const w=R.shot*p,l=(R.rho&&R.A)?w/R.rho/R.A*10:null;return[p,w,l]});
+  const mx=rows[0][2]||1;
+  $('fillTest').innerHTML=rows.map(([p,w,l])=>`<div style="display:grid;grid-template-columns:44px 1fr 90px;gap:8px;align-items:center;margin:6px 0">
+   <b class="num">${pct(p)}</b><div style="background:var(--bg);border-radius:6px;height:18px;overflow:hidden"><div style="width:${(l||0)/mx*100}%;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))"></div></div>
+   <div class="num" style="text-align:right;font-size:13px"><b>${f(l)}</b> mm<br><span class="hint">${f(w)} g</span></div></div>`).join('');
+}
+
+/* ===================== 렌더: 환산 탭 ===================== */
+function renderConv(){
+  const C=S.conv;
+  const vol=R.A?R.A*C.L/10:null,wt=isN(vol)&&R.rho?vol*R.rho:null;
+  $('c-vol').textContent=f(vol,2);$('c-wt').textContent=f(wt,2);
+  $('c-wtp').textContent=isN(wt)?'Shot 대비 '+pct(wt/R.shot):'';
+  const pa=C.pm?C.ps/C.pm*R.pmax:null,vmax=R.A?R.rate/R.A*10:null,va=isN(vmax)?vmax*C.vs:null;
+  $('c-pa').textContent=f(pa,0);$('c-pmaxl').textContent=f(R.pmax,0);$('c-vmax').textContent=f(vmax,1);$('c-va').textContent=f(va,1);
+  const bar=(l,v,m,col,u)=>`<div style="margin:6px 0"><div style="display:flex;font-size:12px"><span>${l}</span><span class="num" style="margin-left:auto"><b>${f(v,0)}</b> / ${f(m,0)} ${u}</span></div><div style="background:var(--bg);height:12px;border-radius:6px;overflow:hidden;margin-top:3px"><div style="height:100%;width:${Math.min(100,(v/m)*100||0)}%;background:${col};border-radius:6px"></div></div></div>`;
+  $('pvBars').innerHTML=bar('사출압력',pa,R.pmax,'var(--acc)','kgf/㎠')+bar('사출속도',va,vmax,'var(--blue)','mm/s');
+  // 스크류 변경
+  const a0=area(C.d0),a1=area(C.d1),k=a1?a0/a1:null;
+  $('s-ratio').textContent=isN(k)?` (×${f(k,3)})`:'';
+  const lab=['계량완료','1차','2차','3차','4차','잔량'];
+  $('screwTbl').innerHTML=`<table class="t"><tr><th></th>${lab.map(l=>`<th>${l}</th>`).join('')}</tr>
+   <tr><td class="h">기존</td>${C.sp.map((v,i)=>`<td><input data-sp="${i}" value="${v}" inputmode="decimal" style="width:44px;border:1.5px solid #f6dfa3;background:#fff8e6;border-radius:6px;text-align:center;font:700 13px 'JetBrains Mono';color:#1d4ed8;padding:4px 0"></td>`).join('')}</tr>
+   <tr><td class="h">변경후</td>${C.sp.map(v=>`<td class="n" style="color:var(--acc)">${f(v*k,1)}</td>`).join('')}</tr></table>`;
+  $('screwTbl').querySelectorAll('input').forEach(el=>el.addEventListener('change',()=>{S.conv.sp[+el.dataset.sp]=num(el.value)??0;update()}));
+  const mx=Math.max(...C.sp.map(v=>Math.max(v,v*k)))||1;
+  let s=`<svg viewBox="0 0 360 120" width="100%">`;
+  C.sp.forEach((v,i)=>{const x=20+i*56,h0=v/mx*80,h1=v*k/mx*80;
+    s+=`<rect x="${x}" y="${95-h0}" width="20" height="${h0}" fill="#c5ccd8" rx="2"/><rect x="${x+22}" y="${95-h1}" width="20" height="${h1}" fill="var(--acc)" rx="2"/><text x="${x+21}" y="110" font-size="9" text-anchor="middle" fill="#5b6478">${lab[i]}</text>`});
+  s+=`<rect x="230" y="2" width="9" height="9" fill="#c5ccd8"/><text x="243" y="10" font-size="9" fill="#5b6478">기존</text><rect x="275" y="2" width="9" height="9" fill="var(--acc)"/><text x="288" y="10" font-size="9" fill="#5b6478">변경후</text></svg>`;
+  $('screwChart').innerHTML=s;
+}
+
+/* ===================== 불량 대책 DB ===================== */
+// d: up/dn/ck, key → 현재값 연결
+const DEFECTS=[
+ {id:'short',nm:'미성형',en:'Short Shot',cat:'충진',ic:'◐',cause:'수지가 캐비티 끝까지 차지 않음 — 계량 부족, 압력·속도 부족, 가스 정체, 수지/금형 온도 낮음',
+  acts:[['up','계량완료 위치','쿠션이 0에 가까우면 계량 부족. 쿠션 확보부터','mEnd'],['up','3차 충진 속도','제품 대부분을 고속으로 충진','v3'],['up','3차 충진 압력','압력이 설정 상한에 닿는지 확인','p3'],['dn','V/P 절환 위치','절환이 너무 빠르면 보압으로 충진 → 위치를 앞(작게)으로','f4'],['up','수지 온도 / 금형 온도','유동성 향상'],['ck','가스벤트','끝단 탄화 동반 시 벤트 청소·추가']]},
+ {id:'flash',nm:'버 (Flash)',en:'Flash',cat:'충진',ic:'▭',cause:'파팅면·이젝터 틈으로 수지 유출 — 과충진, 과보압, 형체력 부족, 수지 온도 과다',
+  acts:[['dn','보압','과보압이 가장 흔한 원인','ph'],['dn','4차 속도','V/P 직전 저속으로 끝단 충격 완화','v4'],['up','V/P 절환 위치','조금 일찍(위치값 크게) 절환','f4'],['dn','수지 온도','점도 상승으로 틈새 유입 감소'],['ck','형체력 / 파팅면','형체력 부족·이물·마모 점검']]},
+ {id:'sink',nm:'싱크마크',en:'Sink Mark',cat:'수축',ic:'◡',cause:'두꺼운 부위 수축 보상 부족 — 보압·보압시간 부족, 게이트 조기 고화, 냉각 부족',
+  acts:[['up','보압','수축분 보상','ph'],['up','보압 시간','Gate Seal Time까지 (설정요령 5항)'],['ck','쿠션량','쿠션 0이면 보압 전달 불가 → 계량 증가','cush'],['up','냉각시간','표면 고화 후 취출','cool'],['dn','금형 온도(해당 부위)','국부 냉각 강화'],['ck','게이트 크기','게이트가 작으면 조기 고화']]},
+ {id:'weld',nm:'웰드라인',en:'Weld Line',cat:'외관',ic:'⋈',cause:'흐름이 합류하는 곳의 융착 불량 — 합류부 온도 저하, 가스 정체',
+  acts:[['up','3차 충진 속도','합류 시 수지 온도 유지','v3'],['up','금형 온도 / 수지 온도','융착 강도 향상'],['up','3차 충진 압력','','p3'],['ck','합류부 가스벤트','가스 정체 해소'],['ck','게이트 위치','합류 위치를 비외관부로']]},
+ {id:'silver',nm:'은줄 (Silver)',en:'Silver Streak',cat:'외관',ic:'≋',cause:'수분·가스·공기 혼입 — 건조 불량, 석백 과다, 열분해, 게이트부 고속',
+  acts:[['ck','원재료 건조','재질별 건조 조건·시간 확인 (최우선)'],['dn','2차 충진 속도 (Gate부)','젯팅·실버 방지 (설정요령 3항 2단)','v2'],['dn','흘림방지(석백)량','과다 시 공기 흡입','suck'],['up','배압','용융 수지 내 가스 배출'],['ck','체류시간 / 계량비','계량비 낮으면 체류 길어져 열분해','ratio']]},
+ {id:'jet',nm:'젯팅 · 플로우마크',en:'Jetting / Flow Mark',cat:'외관',ic:'〰',cause:'게이트 통과 직후 고속 분사 또는 표면 조기 고화로 물결 무늬',
+  acts:[['dn','2차 충진 속도 (Gate부)','게이트 통과 구간 저속','v2'],['up','금형 온도','표면 전사 개선'],['up','수지 온도',''],['ck','게이트 형상','팬·탭 게이트, 충돌벽 방향']]},
+ {id:'warp',nm:'변형 (휨)',en:'Warpage',cat:'수축',ic:'⌒',cause:'불균일 수축·잔류응력 — 금형 온도 편차, 과보압, 냉각 부족, 취출 불균형',
+  acts:[['up','냉각시간','충분히 고화 후 취출','cool'],['ck','금형 온도 편차','고정측/가동측 온도차 축소'],['dn','보압','과보압 시 잔류응력','ph'],['ck','취출 밸런스','이젝터 위치·속도']]},
+ {id:'void',nm:'기포 (보이드)',en:'Void',cat:'수축',ic:'○',cause:'두꺼운 내부 수축 공동 또는 가스 혼입',
+  acts:[['up','보압 / 보압시간','내부 수축 보상','ph'],['ck','쿠션량','보압 전달 확보','cush'],['up','배압','가스 배출'],['ck','원재료 건조','수분 기인 시']]},
+ {id:'burn',nm:'탄화 · 가스 Burn',en:'Burn Mark',cat:'외관',ic:'✸',cause:'끝단 공기 단열압축 또는 장시간 체류로 인한 열분해',
+  acts:[['dn','4차 충진 속도','가스빼기 구간 저속 (설정요령 3항 4단)','v4'],['ck','가스벤트 청소/추가',''],['dn','수지 온도',''],['ck','계량비 / 체류시간','계량비 30% 미만이면 과열 우려','ratio']]},
+ {id:'crack',nm:'크랙 · 백화',en:'Crack / Whitening',cat:'이형',ic:'⚡',cause:'이형 저항·잔류응력 — 과보압, 과냉각/이형 시 힘 집중',
+  acts:[['dn','보압','과충진 → 이형 저항 증가','ph'],['up','금형 온도','잔류응력 감소'],['ck','빼기 구배 / 이젝터','이형 불균일 점검'],['ck','냉각시간','과다 냉각 시 수축 고착','cool']]},
+ {id:'weight',nm:'중량 편차',en:'Weight Variation',cat:'공정',ic:'⚖',cause:'계량·쿠션 불안정, 체크링 역류, 배압 부적정',
+  acts:[['ck','배압 최적화','5~30bar 5간격, 구간당 10Shot 중량 측정 → 편차 최소 배압 (설정요령 8항)'],['ck','쿠션량 안정','Shot마다 쿠션 변동 확인','cush'],['ck','계량비','30~70% 범위 유지','ratio'],['ck','체크링 마모','쿠션이 계속 0으로 가면 역류 의심']]},
+ {id:'meter',nm:'계량 불량',en:'Metering',cat:'공정',ic:'⟳',cause:'계량 시간 과다·불균일, 수지 공급 불량',
+  acts:[['ck','계량비','70% 초과 시 용융 불충분, 30% 미만 과열','ratio'],['ck','계량 1·2·3차 위치','1차 20% 저속 / 2차 75% 중속 / 3차 5% 저속','mEnd'],['dn','배압','과다 시 계량 지연'],['ck','호퍼 하부 냉각 / 브릿지','']]}
+];
+function curVal(k){
+  const m={mEnd:[R.mEnd,'mm'],f4:[R.f4,'mm'],cush:[R.cush,'mm',2],suck:[R.suck,'mm'],cool:[R.cool,'s'],ratio:[R.ratio,'%'],
+    v2:[R.v[1],'%',0],v3:[R.v[2],'%',0],v4:[R.v[3],'%',0],p3:[R.p[2],'',0],ph:[R.p[4],'',0]};
+  const x=m[k];if(!x)return'';
+  return `<div class="cur">현재<b>${k==='ratio'?pct(x[0]):f(x[0],x[2]??1)}${k==='ratio'?'':' '+x[1]}</b></div>`;
+}
+let dCat='전체';
+function renderDefect(){
+  const cats=['전체',...new Set(DEFECTS.map(d=>d.cat))];
+  $('dfilter').innerHTML=cats.map(c=>`<button class="${c===dCat?'on':''}" data-c="${c}">${c}</button>`).join('');
+  $('dfilter').querySelectorAll('button').forEach(b=>b.onclick=()=>{dCat=b.dataset.c;renderDefect()});
+  const open=new Set([...document.querySelectorAll('.dcard.open')].map(e=>e.dataset.id));
+  const arr={up:'▲',dn:'▼',ck:'✓'};
+  $('dlist').innerHTML=DEFECTS.filter(d=>dCat==='전체'||d.cat===dCat).map(d=>`
+   <div class="dcard ${open.has(d.id)?'open':''}" data-id="${d.id}">
+    <div class="dhead"><div class="dicon" style="font-size:22px;color:var(--acc)">${d.ic}</div><div><div class="nm">${d.nm}</div><div class="ds">${d.en} · ${d.cat}</div></div><div class="ar">▾</div></div>
+    <div class="dbody"><div class="cause"><b>원인</b> · ${d.cause}</div>
+     ${d.acts.map((a,i)=>`<div class="act"><div class="dir ${a[0]}">${arr[a[0]]}</div><div style="min-width:0"><div class="p">${i<2?'<span class="prio">우선</span>':''}${a[1]} ${a[0]==='up'?'올림':a[0]==='dn'?'내림':'점검'}</div>${a[2]?`<div class="n">${a[2]}</div>`:''}</div>${a[3]?curVal(a[3]):''}</div>`).join('')}
+    </div></div>`).join('');
+  $('dlist').querySelectorAll('.dhead').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('open'));
+}
+
+/* ===================== 렌더: 자료 탭 ===================== */
+function renderData(){
+  // 사출기
+  $('d-mach').innerHTML=`<div class="card"><h2><span class="bar"></span>사출기 사양<span class="tag">눌러서 수정</span></h2>
+   ${S.machines.map((m,i)=>{const A=area(m.d);return `<div class="lrow"><div class="main"><div class="t1">${m.ton} Ton <span class="hint">· Ø${m.d}mm</span></div>
+   <div class="t2 num">사출율 ${m.rate} · 최대압 ${m.pmax} · 스트로크 ${m.stroke} · 최대속도 ${f(m.rate/A*10,0)}mm/s · L/D ${f(m.stroke/m.d,2)} · 20~80% ${f(m.stroke*S.coef.aLo,0)}~${f(m.stroke*S.coef.aHi,0)}</div></div><button class="ed" data-e="mach" data-i="${i}">수정</button></div>`}).join('')}
+   <div class="btns" style="margin-top:10px"><button class="btn sm" data-e="mach" data-i="-1">+ 사출기 추가</button></div></div>`;
+  // 원재료
+  $('d-mat').innerHTML=`<div class="card"><h2><span class="bar"></span>재료별 비중 · 열량<span class="tag">${S.mats.length}종</span></h2>
+   <table class="t"><tr><th style="text-align:left">재질</th><th>고체</th><th>용융</th><th>열량</th><th></th></tr>
+   ${S.mats.map((m,i)=>`<tr ${m.name===S.inp.mat?'style="background:#fff8e6"':''}><td class="h">${esc(m.name)}</td><td class="n">${f(m.solid,2)}</td><td class="n">${f(m.melt,2)}</td><td class="n">${isN(m.heat)?f(m.heat,0):'<span class="chip c-warn">미등록</span>'}</td><td><button class="ed" style="border:0;padding:4px 8px;border-radius:6px;background:var(--bg)" data-e="mat" data-i="${i}">수정</button></td></tr>`).join('')}</table>
+   <div class="hint" style="margin-top:8px">비중 g/㎤ · 열량 kcal/kg. 미등록 재질은 냉각시간이 계산되지 않습니다. 실제 grade 물성표 값 사용을 권장합니다.</div>
+   <div class="btns" style="margin-top:10px"><button class="btn sm" data-e="mat" data-i="-1">+ 재질 추가</button></div></div>`;
+  // 설정계수
+  let cg='',last='';
+  COEF_META.forEach(([g,k,l,u,n])=>{if(g!==last){cg+=`<div class="grp" style="margin-top:14px">${g}</div>`;last=g}
+    cg+=`<div class="lrow"><div class="main"><div style="font-size:13px;font-weight:500">${l}</div>${n?`<div class="t2">${n}</div>`:''}</div>
+    <input data-k="${k}" value="${S.coef[k]}" inputmode="decimal" style="width:70px;border:1.5px solid #f6dfa3;background:#fff8e6;border-radius:8px;text-align:center;font:700 15px 'JetBrains Mono';color:#1d4ed8;padding:6px 0">
+    <span class="hint" style="width:26px">${u}</span></div>`});
+  $('d-coef').innerHTML=`<div class="card"><h2><span class="bar"></span>설정 계수<span class="tag">수정 즉시 반영</span></h2>${cg}
+   <div class="btns" style="margin-top:12px"><button class="btn ghost sm" id="coefReset">계수 기본값 복원</button></div></div>`;
+  $('d-coef').querySelectorAll('input[data-k]').forEach(el=>el.addEventListener('input',()=>{const n=num(el.value);if(n!=null){S.coef[el.dataset.k]=n;update(true)}}));
+  $('coefReset').onclick=()=>{S.coef={...DEF.coef};update();toast('설정계수 복원')};
+  renderRes();
+  $('d-guide').innerHTML=guideHTML();
+}
+function renderRes(){
+  const rows=S.res.map(r=>{const shot=r.net*r.cav+r.run,q=r.stroke?(r.meter-r.remain)/r.stroke:null,t=r.meter?r.stroke/r.meter*r.ct/60:null;return{...r,shot,q,t}});
+  const mx=Math.max(...rows.map(r=>r.t||0),1);
+  const cl={ok:'var(--ok)',warn:'var(--warn)',bad:'var(--bad)'};
+  $('d-res').innerHTML=`<div class="card"><h2><span class="bar"></span>제품별 수지 체류시간<span class="tag">분</span></h2>
+   <div class="hint" style="margin-bottom:8px">체류시간 = 계량스트로크 ÷ 계량 × C/T ÷ 60 · 막대 색은 계량비 판정</div>
+   ${rows.map((r,i)=>{const j=judgeRatio(r.q);return `<div style="margin:10px 0" data-e="res" data-i="${i}">
+    <div style="display:flex;font-size:12px;gap:6px;align-items:baseline"><b style="font-size:13px">${esc(r.prod)}</b><span class="hint">${esc(r.m)} · ${esc(r.mat)}</span><span class="num" style="margin-left:auto;font-weight:700">${f(r.t,2)}분</span></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:3px"><div style="flex:1;background:var(--bg);height:14px;border-radius:7px;overflow:hidden"><div style="height:100%;width:${(r.t||0)/mx*100}%;background:${cl[j[1]]};border-radius:7px"></div></div><span class="chip c-${j[1]}" style="min-width:44px;text-align:center">${pct(r.q)}</span></div>
+    <div class="hint num" style="font-size:11px">Shot ${f(r.shot,1)}g · 계량 ${r.meter}/잔량 ${r.remain}mm · C/T ${r.ct}s</div></div>`}).join('')}
+   <div class="btns" style="margin-top:10px"><button class="btn sm" data-e="res" data-i="-1">+ 제품 추가</button></div>
+   <div class="hint" style="margin-top:6px">항목을 누르면 수정할 수 있습니다.</div></div>`;
+}
+function guideHTML(){
+  const c=S.coef;
+  return `<div class="card guide"><h2><span class="bar"></span>사출조건 설정 요령</h2>
+  <div class="grp">현재 설비 · ${S.inp.ton}Ton</div>
+  <div class="hint num" style="margin-bottom:8px">스크류 Ø${f(R.d,0)}mm · 최대사출압 ${f(R.pmax,0)} kgf/㎠ · 사출율 ${f(R.rate,0)} ㎤/s</div>
+  <ol style="padding-left:18px;margin:0">
+   <li><b>계량 설정</b> — 계량스트로크의 30~70%가 좋다 (30% 이하 과열, 70% 이상 용융 불충분). 최대 계량거리의 20~80%를 벗어나지 않는다.</li>
+   <li><b>쿠션량</b> — 스크류 직경의 15% (적정 10~20%). 런너·스프루 양보다 적을 것.</li>
+   <li><b>충진 위치</b> — 위치제어 다단 사출:
+    <div class="steps" style="margin:8px 0">
+     <span class="s" style="background:var(--f1)">1단</span><span><b>중~고속</b> · 런너 · 충진성 향상, 체크링을 빠르게 닫음</span>
+     <span class="s" style="background:var(--f2)">2단</span><span><b>저속</b> · Gate부 10% · 젯팅, 실버 방지</span>
+     <span class="s" style="background:var(--f3)">3단</span><span><b>고속</b> · 제품의 90% · 대부분 충진</span>
+     <span class="s" style="background:var(--f4)">4단</span><span><b>저속</b> · 제품의 98% · 가스빼기, 버 방지, V/P 정확</span>
+    </div></li>
+   <li><b>보압 절환 위치</b> — 이론치: 중량을 위치로 환산한 98% 위치. 실력치: 보압 0으로 충진만 했을 때의 거리.</li>
+   <li><b>Gate Seal Time</b> — 보압을 중간값으로 두고 시간을 1초씩 늘리며 Shot 중량이 더 이상 변하지 않는 시간.</li>
+   <li><b>석백량</b> — 스크류 직경의 10%.</li>
+   <li><b>계량</b> — 1차 20% 저속 · 2차 75% 중속 · 3차 5% 저속2.</li>
+   <li><b>배압</b> — 보압 없이 충진만으로 Shot 중량 측정. 5~30bar를 5 간격으로 구간당 10 Shot 측정, 최대-최소 차이가 가장 작은 배압으로 설정.</li>
+   <li><b>냉각시간</b> — 보압+냉각을 전체 냉각시간으로 보고, 취출 시 변형 없는 최소 시간으로 설정.</li>
+  </ol>
+  <div class="hint" style="margin-top:8px">※ 앱의 계량 위치는 용융비중 기준식을 사용합니다. 계량 2차 비율 기본값은 ${c.m2} (설정요령 95%와 다를 수 있음 → 설정계수에서 조정).</div></div>
+  <div class="card"><h2><span class="bar"></span>데이터 관리</h2>
+   <div class="hint" style="margin-bottom:10px">입력값과 수정한 자료는 이 기기 브라우저에 자동 저장됩니다.</div>
+   <div class="btns"><button class="btn ghost sm" id="expBtn">자료 복사(백업)</button><button class="btn ghost sm" id="impBtn">자료 붙여넣기(복원)</button><button class="btn sm" style="background:var(--bad)" id="rstBtn">전체 초기화</button></div></div>`;
+}
+
+/* ===================== 편집 시트 ===================== */
+const SPEC={
+ mach:{list:()=>S.machines,title:'사출기',fields:[['ton','Ton수'],['d','스크류경 mm'],['rate','사출율 ㎤/s'],['pmax','최대압력 kgf/㎠'],['stroke','계량스트로크 mm']],blank:{ton:0,d:0,rate:0,pmax:0,stroke:0}},
+ mat:{list:()=>S.mats,title:'재질',fields:[['name','재질명','t'],['solid','고체 비중'],['melt','용융 비중'],['heat','열량 kcal/kg (모르면 비움)']],blank:{name:'',solid:null,melt:null,heat:null}},
+ res:{list:()=>S.res,title:'체류시간 제품',fields:[['prod','품명','t'],['m','사출호기','t'],['mat','재질','t'],['ton','Ton'],['d','스크류경 mm'],['stroke','계량스트로크 mm'],['cav','Cavity'],['net','NET.WT g'],['run','RUN.WT g'],['meter','계량 mm'],['remain','잔량 mm'],['ct','C/T sec']],blank:{prod:'',m:'',mat:'',ton:0,d:0,stroke:0,cav:1,net:0,run:0,meter:0,remain:0,ct:0}}
+};
+function openEdit(type,i){
+  const sp=SPEC[type],it=i>=0?sp.list()[i]:{...sp.blank};
+  $('sheet').innerHTML=`<h3>${sp.title} ${i>=0?'수정':'추가'}</h3><div class="fgrid">${sp.fields.map(([k,l,t])=>`<div class="f ${t?'wide':''}"><label>${l}</label><div class="row"><input data-k="${k}" ${t?'type="text" style="font-family:Noto Sans KR;font-size:16px"':'inputmode="decimal"'} value="${it[k]??''}"></div></div>`).join('')}</div>
+   <div class="btns" style="margin-top:14px"><button class="btn acc" id="svB">저장</button><button class="btn ghost" id="cxB">취소</button>${i>=0?'<button class="btn" style="background:var(--bad);margin-left:auto" id="dlB">삭제</button>':''}</div>`;
+  $('mask').classList.add('on');
+  $('cxB').onclick=closeEdit;
+  $('svB').onclick=()=>{const o={...it};$('sheet').querySelectorAll('input').forEach(el=>{const t=sp.fields.find(x=>x[0]===el.dataset.k)[2];o[el.dataset.k]=t?el.value.trim():num(el.value)});
+    if(type==='mat'&&!o.name){toast('재질명을 입력하세요');return}
+    const L=sp.list();if(i>=0){if(type==='mat'&&S.inp.mat===L[i].name)S.inp.mat=o.name;L[i]=o}else L.push(o);
+    if(type==='mach')S.machines.sort((a,b)=>a.ton-b.ton);
+    closeEdit();fillSelects();update();toast('저장됨')};
+  if(i>=0)$('dlB').onclick=()=>{const b=$('dlB');if(!b.dataset.c){b.dataset.c=1;b.textContent='한 번 더 눌러 삭제';return}
+    sp.list().splice(i,1);if(type==='mach'&&!S.machines.find(m=>m.ton==S.inp.ton)&&S.machines[0])S.inp.ton=S.machines[0].ton;
+    closeEdit();fillSelects();update();toast('삭제됨')};
+}
+function closeEdit(){$('mask').classList.remove('on')}
+$('mask').onclick=e=>{if(e.target.id==='mask')closeEdit()};
+
+/* ===================== 복사 / 백업 ===================== */
+function summaryText(){
+  const I=S.inp,r=x=>f(x);
+  return `[${I.name}] 사출조건 초기설정
+사출기 ${I.ton}T (Ø${R.d}) / ${I.mat} / 제품 ${f(R.partW,2)}g${I.partU==='cc'?`(${I.part}㎤)`:''}×${I.cav} + 런너 ${f(R.runW,2)}g${I.runnerU==='cc'?`(${I.runner}㎤)`:''} = Shot ${f(R.shot)}g
+계량 위치: 1차 ${r(R.m1)} / 2차 ${r(R.m2)} / 3차 ${r(R.m3)} / 완료 ${r(R.mEnd)} / 흘림방지 ${r(R.suck)} mm
+충진 위치: 1차 ${r(R.f1)} / 2차 ${r(R.f2)} / 3차 ${r(R.f3)} / 4차(V/P) ${r(R.f4)} mm
+속도(%): ${R.v.map(v=>f(v,0)).join(' / ')} (1차/2차/3차/4차/보압)
+압력: ${R.p.map(v=>f(v,0)).join(' / ')} kgf/㎠
+쿠션 ${f(R.cush,2)} mm · 냉각 ${isN(R.cool)?f(R.cool)+' s':R.coolMsg} · 계량비 ${pct(R.ratio)} (${R.rCls[0]})`;
+}
+async function copy(t,msg){try{await navigator.clipboard.writeText(t);toast(msg)}catch(e){
+  $('sheet').innerHTML=`<h3>아래 내용을 길게 눌러 복사하세요</h3><textarea style="width:100%;height:240px;font:12px 'JetBrains Mono';border:1px solid var(--line);border-radius:8px;padding:8px">${esc(t)}</textarea><div class="btns" style="margin-top:10px"><button class="btn" id="cxB">닫기</button></div>`;
+  $('mask').classList.add('on');$('cxB').onclick=closeEdit}}
+$('copyBtn').onclick=()=>copy(summaryText(),'조건표가 복사되었습니다');
+document.addEventListener('click',e=>{
+  const de=e.target.closest&&e.target.closest('#v-data [data-e]');if(de){openEdit(de.dataset.e,+de.dataset.i);return}
+  if(e.target.id==='expBtn')copy(JSON.stringify(S),'자료를 복사했습니다');
+  if(e.target.id==='impBtn'){$('sheet').innerHTML=`<h3>백업 자료 붙여넣기</h3><textarea id="impT" style="width:100%;height:180px;font:12px monospace;border:1px solid var(--line);border-radius:8px;padding:8px"></textarea><div class="btns" style="margin-top:10px"><button class="btn acc" id="impOk">복원</button><button class="btn ghost" id="cxB">취소</button></div>`;
+    $('mask').classList.add('on');$('cxB').onclick=closeEdit;
+    $('impOk').onclick=()=>{try{const o=JSON.parse($('impT').value);if(!o.inp||!o.machines)throw 0;S=o;closeEdit();location.reload()}catch(err){toast('형식이 올바르지 않습니다')}};}
+  if(e.target.id==='rstBtn'){const b=e.target;if(!b.dataset.c){b.dataset.c=1;b.textContent='한 번 더 누르면 초기화';return}
+    try{localStorage.removeItem(KEY)}catch(err){}S=JSON.parse(JSON.stringify(DEF));save();location.reload()}
+});
+
+/* ===================== 탭 ===================== */
+function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  try{localStorage.setItem(KEY+'_tab',v)}catch(e){} window.scrollTo(0,0)}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+document.querySelectorAll('#dseg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#dseg button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.dsub').forEach(d=>d.hidden=d.id!=='d-'+b.dataset.s)});
+
+/* ===================== 갱신 ===================== */
+function update(skipData){R=calc();renderCalc();renderCheck();renderConv();renderDefect();if(!skipData)renderData();else{renderRes();$('d-guide').innerHTML=guideHTML()}save()}
+fillSelects();bindInputs();update();
+try{const t=localStorage.getItem(KEY+'_tab');if(t&&$('v-'+t))show(t)}catch(e){}
+/* ===================== 앱 설치(PWA) ===================== */
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+(function(){let dp=null;const bar=$('instBar');
+  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  let hide=false;try{hide=localStorage.getItem(KEY+'_noinst')==='1'}catch(e){}
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;if(!standalone&&!hide)bar.classList.add('on')});
+  $('instGo').onclick=async()=>{if(!dp)return;bar.classList.remove('on');dp.prompt();try{await dp.userChoice}catch(e){}dp=null};
+  $('instX').onclick=()=>{bar.classList.remove('on');try{localStorage.setItem(KEY+'_noinst','1')}catch(e){}};
+  window.addEventListener('appinstalled',()=>{bar.classList.remove('on');toast('홈 화면에 설치되었습니다')});
+})();
+</script>
+</body>
+</html>
